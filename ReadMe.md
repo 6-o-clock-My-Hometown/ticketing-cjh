@@ -140,3 +140,23 @@ erDiagram
 <br>
 
 #### 🔎 해결 : 포트를 6380으로 변경하여 해결
+
+### 3. @Scheduled 중복 실행 문제 → ShedLock 적용
+
+#### 🚨 문제점: 다중 인스턴스에서 `@Scheduled` 작업이 중복 실행되는 이슈 발생
+- **스케일 아웃 환경**에서 자정마다 실행되는 조회수 초기화 스케줄러가 **여러 서버에서 동시에 실행**
+- 그로 인해 **조회수가 여러 번 초기화되거나, 작업이 충돌**하는 문제가 발생
+
+<br>
+
+#### 🔎 해결: `ShedLock`을 이용한 분산락 기반 스케줄러 실행 제어
+- `@SchedulerLock`을 통해 **동일한 작업을 하나의 인스턴스에서만 실행**되도록 제한
+- **JDBC 기반 ShedLock** 적용으로 별도의 인프라 없이 손쉽게 관리
+- **Redis 기반 ShedLock**도 병행 테스트하여 환경에 맞는 유연한 선택 가능
+
+```java
+@Scheduled(cron = "0 0 0 * * *") // 매일 자정
+@SchedulerLock(name = "resetViewCount", lockAtMostFor = "10m", lockAtLeastFor = "1m")
+public void resetViewCount() {
+    viewCountService.resetAll(); // 조회수 초기화 작업
+}
